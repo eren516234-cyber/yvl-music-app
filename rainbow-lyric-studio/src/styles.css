@@ -1,0 +1,132 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --font-display: "Archivo Black", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+:root {
+  --radius: 1.25rem;
+
+  /* Dynamic accent — set by ThemeProvider. Default = pure white (B&W mode). */
+  --accent-h: 0;
+  --accent-s: 0%;
+  --accent-l: 100%;
+  --accent-hex: #ffffff;
+
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #0c0c0c;
+  --card-foreground: #ffffff;
+  --popover: #0c0c0c;
+  --popover-foreground: #ffffff;
+  --primary: var(--accent-hex);
+  --primary-foreground: #000000;
+  --secondary: #161616;
+  --secondary-foreground: #ffffff;
+  --muted: #141414;
+  --muted-foreground: #8a8a8a;
+  --accent: var(--accent-hex);
+  --accent-foreground: #000000;
+  --destructive: oklch(0.62 0.22 25);
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: var(--accent-hex);
+}
+
+/* Painted (custom-colour) mode flips the surface */
+:root[data-paint="on"] {
+  --background: var(--accent-hex);
+  --foreground: #0a0a0a;
+  --card: rgba(0, 0, 0, 0.08);
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --secondary: rgba(0, 0, 0, 0.08);
+  --secondary-foreground: #0a0a0a;
+  --muted: rgba(0, 0, 0, 0.06);
+  --muted-foreground: rgba(10, 10, 10, 0.65);
+  --accent: #0a0a0a;
+  --accent-foreground: var(--accent-hex);
+  --border: rgba(0, 0, 0, 0.12);
+  --input: rgba(0, 0, 0, 0.1);
+  --primary: #0a0a0a;
+  --primary-foreground: var(--accent-hex);
+  --ring: #0a0a0a;
+}
+
+@keyframes rainbow-shift {
+  0%   { --accent-hex: #ff4d4d; }
+  14%  { --accent-hex: #ffb84d; }
+  28%  { --accent-hex: #ffe14d; }
+  42%  { --accent-hex: #5ddc7a; }
+  57%  { --accent-hex: #4d9aff; }
+  71%  { --accent-hex: #b14dff; }
+  85%  { --accent-hex: #ff4dd1; }
+  100% { --accent-hex: #ff4d4d; }
+}
+@property --accent-hex {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ffffff;
+}
+:root[data-rainbow="on"] {
+  animation: rainbow-shift 14s linear infinite;
+}
+
+@keyframes equalizer {
+  0%, 100% { transform: scaleY(0.4); }
+  50%      { transform: scaleY(1); }
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  html, body { background: var(--color-background); color: var(--color-foreground); }
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+  }
+  .font-display { font-family: var(--font-display); letter-spacing: -0.02em; }
+}
+
+@utility shadow-glow {
+  box-shadow: 0 20px 60px -20px color-mix(in srgb, var(--accent-hex) 55%, transparent);
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
