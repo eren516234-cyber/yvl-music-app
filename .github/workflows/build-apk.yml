@@ -36,6 +36,7 @@ jobs:
             "build-tools;35.0.0" \
             "build-tools;34.0.0" \
             "ndk;26.1.10909125" 2>/dev/null || true
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125" >> $GITHUB_ENV
 
       - name: Install dependencies
         working-directory: artifacts/yvl-mobile
@@ -49,6 +50,12 @@ jobs:
         working-directory: artifacts/yvl-mobile/android
         run: chmod +x gradlew
 
+      - name: Setup Gradle (handles download + caching)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: wrapper
+          build-root-directory: artifacts/yvl-mobile/android
+
       - name: Build debug APK
         working-directory: artifacts/yvl-mobile/android
         run: |
@@ -56,8 +63,6 @@ jobs:
             --no-daemon \
             --max-workers 2 \
             -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=512m"
-        env:
-          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.1.10909125
 
       - name: Prepare output directory
         run: mkdir -p artifacts/yvl-mobile/build
