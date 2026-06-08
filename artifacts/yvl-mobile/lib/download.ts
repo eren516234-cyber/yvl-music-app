@@ -21,8 +21,8 @@ export async function downloadSong(
 
     const task = new DownloadTask(url, dest, {
       onProgress: (progress) => {
-        if (progress.totalBytesExpectedToWrite > 0) {
-          onProgress?.(progress.totalBytesWritten / progress.totalBytesExpectedToWrite);
+        if (progress.totalBytes > 0) {
+          onProgress?.(progress.bytesWritten / progress.totalBytes);
         }
       },
     });
