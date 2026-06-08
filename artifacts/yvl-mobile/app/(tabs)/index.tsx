@@ -1,194 +1,200 @@
-import { Feather } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useRef, useState } from "react";
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React from 'react';
 import {
-  ActivityIndicator,
   Animated,
-  Image,
-  Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DownloadButton } from '@/components/DownloadButton';
+import { SONGS, useMusic } from '@/contexts/MusicContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
-import { AlbumCard } from "@/components/AlbumCard";
-import { SongRow } from "@/components/SongRow";
-import { usePlayer } from "@/contexts/PlayerContext";
-import { useTheme } from "@/contexts/ThemeContext";
-import { Saavn, toTrack, type SaavnAlbum, bestImage } from "@/lib/saavn";
-
-const TABS = [
-  { key: "for-you",  label: "For You",  query: "top hits 2026" },
-  { key: "trending", label: "Trending",  query: "trending songs 2026" },
-  { key: "rock",     label: "Rock",      query: "rock hits" },
-  { key: "hiphop",   label: "Hip-Hop",   query: "hip hop hits" },
-  { key: "kpop",     label: "K-Pop",     query: "k-pop hits" },
-  { key: "pop",      label: "Pop",       query: "pop hits" },
-  { key: "bolly",    label: "Bollywood", query: "bollywood hits 2026" },
-  { key: "lofi",     label: "Lo-Fi",     query: "lofi chill" },
-] as const;
-
-type TabKey = (typeof TABS)[number]["key"];
+const GENRES = ['For you', 'Rock', 'Hip-hop', 'K-Pop', 'EDM', 'Bollywood'];
 
 export default function HomeScreen() {
-  const { accent, colors, setRoute } = useTheme();
-  const { play, quality } = usePlayer();
-  const insets = useSafeAreaInsets();
+  const { accentColor, rainbowAnim, rainbowEnabled } = useTheme();
+  const { currentSong, setCurrentSong, isPlaying, likedSongs, toggleLike } = useMusic();
   const router = useRouter();
-  const [tab, setTab] = useState<TabKey>("for-you");
-  const [expanded, setExpanded] = useState(false);
-  const heroAnim = useRef(new Animated.Value(0)).current;
+  const insets = useSafeAreaInsets();
+  const [activeGenre, setActiveGenre] = React.useState(0);
 
-  useEffect(() => {
-    setRoute("home");
-    Animated.timing(heroAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
-  }, [setRoute]);
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
 
-  const active = TABS.find((t) => t.key === tab)!;
-
-  const songsQ = useQuery({
-    queryKey: ["home", "songs", active.query],
-    queryFn: () => Saavn.searchSongs(active.query, 40).then((r) => r.results),
-    staleTime: 5 * 60_000,
-  });
-  const albumsQ = useQuery({
-    queryKey: ["home", "albums", active.query],
-    queryFn: () => Saavn.searchAlbums(active.query, 20).then((r) => r.results),
-    staleTime: 5 * 60_000,
-  });
-
-  const allSongs = songsQ.data ?? [];
-  const albums = albumsQ.data ?? [];
-  const displayed = expanded ? allSongs : allSongs.slice(0, 10);
-  const heroAlbum = albums[0];
-  const heroSongs = allSongs.slice(0, 3);
+  const animatedAccent = rainbowEnabled
+    ? rainbowAnim.interpolate({
+        inputRange: [0, 1, 2, 3, 4, 5],
+        outputRange: ['#BF5AF2', '#0A84FF', '#30D158', '#FF9F0A', '#FF375F', '#BF5AF2'],
+      })
+    : accentColor;
 
   return (
-    <ScrollView
-      style={[styles.scroll, { backgroundColor: colors.background }]}
-      contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: 160 }}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* ── Header ── */}
-      <Animated.View style={[styles.header, { opacity: heroAnim, transform: [{ translateY: heroAnim.interpolate({ inputRange: [0,1], outputRange: [-12,0] }) }] }]}>
-        <View>
-          <Text style={[styles.greeting, { color: colors.mutedForeground }]}>Good music</Text>
-          <Text style={[styles.logo, { color: colors.foreground }]}>YVL</Text>
-        </View>
-        <View style={[styles.avatar, { backgroundColor: accent }]}>
-          <Text style={styles.avatarText}>♪</Text>
-        </View>
-      </Animated.View>
-
-      {/* ── Genre chips ── */}
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" />
       <ScrollView
-        horizontal showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabsRow}
-        style={{ marginBottom: 28 }}
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + 16, paddingBottom: 180 },
+        ]}
+        showsVerticalScrollIndicator={false}
       >
-        {TABS.map((t) => {
-          const sel = t.key === tab;
-          return (
-            <Pressable
-              key={t.key}
-              onPress={() => { setTab(t.key); setExpanded(false); }}
-              style={[styles.tabPill, {
-                backgroundColor: sel ? colors.foreground : colors.muted,
-                borderColor: sel ? colors.foreground : colors.border,
-              }]}
-            >
-              <Text style={[styles.tabText, { color: sel ? colors.background : colors.mutedForeground }]}>
-                {t.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      {/* ── Hero banner ── */}
-      {heroAlbum && (
-        <Pressable
-          onPress={() => router.push({ pathname: "/album/[id]", params: { id: heroAlbum.id } })}
-          style={styles.hero}
-        >
-          <Image source={{ uri: bestImage(heroAlbum.image) }} style={styles.heroImg} blurRadius={2} />
-          <LinearGradient colors={["transparent", "rgba(0,0,0,0.92)"]} style={styles.heroGradient} />
-          <View style={styles.heroContent}>
-            <Text style={styles.heroLabel}>Featured Album</Text>
-            <Text style={styles.heroTitle} numberOfLines={2}>{heroAlbum.name}</Text>
-            <Pressable
-              onPress={() => void play(heroSongs.map((s) => toTrack(s, quality)), 0)}
-              style={[styles.heroPlay, { backgroundColor: accent }]}
-            >
-              <Feather name="play" size={16} color="#000" style={{ marginLeft: 2 }} />
-              <Text style={[styles.heroPlayText, { color: "#000" }]}>Play Now</Text>
-            </Pressable>
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.greeting}>{greeting.toUpperCase()}</Text>
+            <Animated.Text style={[styles.yvl, { color: animatedAccent as any }]}>
+              YVL
+            </Animated.Text>
           </View>
-        </Pressable>
-      )}
-
-      {/* ── Quick picks ── */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Quick Picks</Text>
-        {songsQ.isLoading && <ActivityIndicator color={accent} style={{ marginTop: 12 }} />}
-        <View style={styles.songList}>
-          {displayed.map((s) => <SongRow key={s.id} song={s} queue={allSongs} />)}
+          <TouchableOpacity style={[styles.avatar, { backgroundColor: accentColor }]}>
+            <Text style={styles.avatarText}>E</Text>
+          </TouchableOpacity>
         </View>
-        {allSongs.length > 10 && (
-          <Pressable onPress={() => setExpanded((v) => !v)} style={styles.showMore}>
-            <Text style={[styles.showMoreText, { color: accent }]}>
-              {expanded ? "Show less" : `Show ${allSongs.length - 10} more`}
-            </Text>
-            <Feather name={expanded ? "chevron-up" : "chevron-down"} size={14} color={accent} />
-          </Pressable>
-        )}
-      </View>
 
-      {/* ── Albums grid ── */}
-      {albums.length > 0 && (
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Albums</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14 }}>
-            {albums.map((a) => (
-              <AlbumCard
-                key={a.id} album={a} size={150}
-                onPress={(al) => router.push({ pathname: "/album/[id]", params: { id: al.id } })}
+        {/* Genre chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.genreRow}
+          contentContainerStyle={styles.genreContent}
+        >
+          {GENRES.map((g, i) => (
+            <TouchableOpacity
+              key={g}
+              onPress={() => setActiveGenre(i)}
+              style={[
+                styles.chip,
+                activeGenre === i && { backgroundColor: accentColor, borderColor: accentColor },
+              ]}
+            >
+              <Text style={[styles.chipText, activeGenre === i && { color: '#000', fontWeight: '700' }]}>
+                {g}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Quick picks */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Quick picks</Text>
+          <TouchableOpacity>
+            <Text style={[styles.seeAll, { color: accentColor }]}>See all</Text>
+          </TouchableOpacity>
+        </View>
+        {SONGS.slice(0, 5).map((song) => (
+          <TouchableOpacity
+            key={song.id}
+            style={[
+              styles.songRow,
+              currentSong?.id === song.id && styles.songRowActive,
+            ]}
+            onPress={() => setCurrentSong(song)}
+          >
+            <View style={[styles.albumArt, { backgroundColor: song.color }]} />
+            <View style={styles.songInfo}>
+              <Text style={styles.songTitle} numberOfLines={1}>{song.title}</Text>
+              <Text style={styles.songArtist} numberOfLines={1}>{song.artist}</Text>
+            </View>
+            <Text style={styles.duration}>{song.duration}</Text>
+            <DownloadButton song={song} />
+            <TouchableOpacity
+              onPress={() => toggleLike(song.id)}
+              style={styles.iconBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons
+                name={likedSongs.includes(song.id) ? 'heart' : 'heart-outline'}
+                size={20}
+                color={likedSongs.includes(song.id) ? accentColor : '#636366'}
               />
-            ))}
-          </ScrollView>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        ))}
+
+        {/* Explore section */}
+        <View style={[styles.sectionHeader, { marginTop: 28 }]}>
+          <Text style={styles.sectionTitle}>Explore ✦</Text>
+          <TouchableOpacity onPress={() => router.push('/explore')}>
+            <Text style={[styles.seeAll, { color: accentColor }]}>See all →</Text>
+          </TouchableOpacity>
         </View>
-      )}
-    </ScrollView>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.exploreRow}
+        >
+          {SONGS.map((song) => (
+            <TouchableOpacity
+              key={song.id}
+              style={styles.exploreCard}
+              onPress={() => setCurrentSong(song)}
+            >
+              <View style={[styles.exploreCircle, { backgroundColor: song.color }]}>
+                <Ionicons name="musical-notes" size={20} color="#fff" />
+              </View>
+              <Text style={styles.exploreName} numberOfLines={1}>{song.artist}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#000' },
   scroll: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 24, marginBottom: 20 },
-  greeting: { fontSize: 14, fontWeight: "600", letterSpacing: 0.5, textTransform: "uppercase" },
-  logo: { fontSize: 64, fontWeight: "900", letterSpacing: -4, lineHeight: 68, marginTop: -4 },
-  avatar: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center", marginBottom: 8 },
-  avatarText: { fontSize: 18, color: "#000" },
-  tabsRow: { paddingHorizontal: 24, gap: 8 },
-  tabPill: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 24, borderWidth: 1 },
-  tabText: { fontSize: 14, fontWeight: "700", letterSpacing: -0.2 },
-
-  hero: { marginHorizontal: 24, borderRadius: 28, overflow: "hidden", height: 280, marginBottom: 36 },
-  heroImg: { width: "100%", height: "100%", position: "absolute" },
-  heroGradient: { position: "absolute", bottom: 0, left: 0, right: 0, height: 180 },
-  heroContent: { position: "absolute", bottom: 0, left: 0, right: 0, padding: 22 },
-  heroLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 2, textTransform: "uppercase", color: "rgba(255,255,255,0.55)", marginBottom: 5 },
-  heroTitle: { fontSize: 26, fontWeight: "900", color: "#fff", letterSpacing: -0.8, marginBottom: 14 },
-  heroPlay: { flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", paddingHorizontal: 22, paddingVertical: 12, borderRadius: 24 },
-  heroPlayText: { fontWeight: "800", fontSize: 15 },
-
-  section: { marginBottom: 36, paddingHorizontal: 24 },
-  sectionTitle: { fontSize: 24, fontWeight: "900", letterSpacing: -0.8, marginBottom: 16 },
-  songList: { gap: 2 },
-  showMore: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 14, paddingVertical: 12 },
-  showMoreText: { fontSize: 15, fontWeight: "700" },
+  content: { paddingHorizontal: 20 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  greeting: { color: '#8E8E93', fontSize: 11, fontWeight: '600', letterSpacing: 1.5 },
+  yvl: { fontSize: 48, fontWeight: '800', letterSpacing: -1, marginTop: -4 },
+  avatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  genreRow: { marginBottom: 24 },
+  genreContent: { paddingRight: 20, gap: 8, flexDirection: 'row' },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#1C1C1E',
+    borderWidth: 1,
+    borderColor: '#38383A',
+  },
+  chipText: { color: '#fff', fontSize: 13, fontWeight: '500' },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  sectionTitle: { color: '#fff', fontSize: 20, fontWeight: '700' },
+  seeAll: { fontSize: 14, fontWeight: '500' },
+  songRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 4,
+  },
+  songRowActive: { backgroundColor: '#1C1C1E' },
+  albumArt: { width: 52, height: 52, borderRadius: 10, marginRight: 12 },
+  songInfo: { flex: 1 },
+  songTitle: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  songArtist: { color: '#8E8E93', fontSize: 13, marginTop: 2 },
+  duration: { color: '#8E8E93', fontSize: 13, marginRight: 8 },
+  iconBtn: { marginLeft: 4, width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  exploreRow: { paddingRight: 20, gap: 16, flexDirection: 'row' },
+  exploreCard: { alignItems: 'center', width: 72 },
+  exploreCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  exploreName: { color: '#8E8E93', fontSize: 11, textAlign: 'center' },
 });

@@ -15,20 +15,14 @@
     },
     "ios": {
       "supportsTablet": false,
-      "infoPlist": {
-        "UIBackgroundModes": ["audio"]
-      }
+      "bundleIdentifier": "com.yvlmusic.app"
     },
     "android": {
+      "package": "com.yvlmusic.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#000000"
-      },
-      "permissions": [
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.READ_MEDIA_AUDIO"
-      ]
+      }
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -41,21 +35,7 @@
         }
       ],
       "expo-font",
-      "expo-web-browser",
-      [
-        "expo-av",
-        {
-          "microphonePermission": false
-        }
-      ],
-      [
-        "expo-media-library",
-        {
-          "photosPermission": "Allow YVL Music to save songs to your library.",
-          "savePhotosPermission": "Allow YVL Music to save songs to your library.",
-          "isAccessMediaLocationEnabled": true
-        }
-      ]
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

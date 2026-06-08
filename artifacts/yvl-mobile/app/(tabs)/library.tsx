@@ -1,152 +1,239 @@
-import { Feather } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from 'react';
 import {
-  Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DownloadButton } from '@/components/DownloadButton';
+import { PLAYLISTS, SONGS, useMusic } from '@/contexts/MusicContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
-import { usePlayer } from "@/contexts/PlayerContext";
-import { useTheme } from "@/contexts/ThemeContext";
-import { useLikes } from "@/contexts/LikesContext";
-import { usePlaylists, type Playlist } from "@/contexts/PlaylistContext";
+const TABS = ['Playlists', 'Downloads', 'Liked'];
 
 export default function LibraryScreen() {
-  const { accent, colors, setRoute } = useTheme();
-  const { play } = usePlayer();
-  const { liked } = useLikes();
-  const { playlists, createPlaylist, deletePlaylist } = usePlaylists();
+  const { accentColor } = useTheme();
+  const { downloadedSongs, downloadProgress, downloadSong, downloadPlaylist, likedSongs, setCurrentSong, downloadingPlaylist } = useMusic();
   const insets = useSafeAreaInsets();
-  const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState("");
+  const [activeTab, setActiveTab] = useState(0);
 
-  useEffect(() => { setRoute("library"); }, [setRoute]);
-
-  function handleCreate() {
-    if (!newName.trim()) return;
-    createPlaylist(newName.trim());
-    setNewName(""); setCreating(false);
-  }
-
-  function playPlaylist(pl: Playlist) {
-    if (!pl.tracks.length) return;
-    void play(pl.tracks, 0);
-  }
-
-  const likedCount = liked.size;
+  const downloadedList = SONGS.filter((s) => downloadedSongs.includes(s.id));
+  const likedList = SONGS.filter((s) => likedSongs.includes(s.id));
+  const downloadingAny = Object.keys(downloadProgress).length > 0;
 
   return (
-    <ScrollView
-      style={[styles.root, { backgroundColor: colors.background }]}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: 160 }]}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text style={[styles.title, { color: colors.foreground }]}>Library</Text>
-
-      {/* Liked songs */}
-      <Text style={[styles.section, { color: accent }]}>Liked Songs</Text>
-      <Pressable
-        style={[styles.likedCard, { backgroundColor: `${accent}22`, borderColor: `${accent}44` }]}
-        onPress={() => {}}
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" />
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: 180 }]}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.likedIcon, { backgroundColor: accent }]}>
-          <Feather name="heart" size={24} color="#000" />
+        <View style={styles.header}>
+          <Text style={styles.title}>My Library</Text>
+          <TouchableOpacity style={[styles.addBtn, { backgroundColor: accentColor }]}>
+            <Ionicons name="add" size={22} color="#fff" />
+          </TouchableOpacity>
         </View>
-        <View style={styles.likedInfo}>
-          <Text style={[styles.likedTitle, { color: colors.foreground }]}>Liked Songs</Text>
-          <Text style={[styles.likedCount, { color: colors.mutedForeground }]}>
-            {likedCount > 0 ? `${likedCount} songs` : "None yet — tap ♥ on any song"}
-          </Text>
-        </View>
-        <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-      </Pressable>
 
-      {/* Playlists */}
-      <View style={styles.sectionRow}>
-        <Text style={[styles.section, { color: accent, marginBottom: 0 }]}>Playlists</Text>
-        <Pressable onPress={() => setCreating(true)} style={[styles.addBtn, { borderColor: accent }]} hitSlop={8}>
-          <Feather name="plus" size={16} color={accent} />
-        </Pressable>
-      </View>
-
-      {creating && (
-        <View style={[styles.createRow, { backgroundColor: colors.muted }]}>
-          <TextInput
-            value={newName} onChangeText={setNewName}
-            placeholder="Playlist name…" placeholderTextColor={colors.mutedForeground}
-            style={[styles.createInput, { color: colors.foreground }]}
-            autoFocus returnKeyType="done" onSubmitEditing={handleCreate}
-          />
-          <Pressable onPress={handleCreate} style={[styles.createOk, { backgroundColor: accent }]}>
-            <Text style={styles.createOkText}>Add</Text>
-          </Pressable>
-          <Pressable onPress={() => setCreating(false)} hitSlop={8}>
-            <Feather name="x" size={18} color={colors.mutedForeground} />
-          </Pressable>
-        </View>
-      )}
-
-      {playlists.length === 0 && !creating ? (
-        <View style={styles.empty}>
-          <Feather name="list" size={32} color={colors.mutedForeground} />
-          <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No playlists yet</Text>
-        </View>
-      ) : (
-        playlists.map((pl) => (
-          <Pressable key={pl.id} style={[styles.playlistRow, { borderBottomColor: colors.border }]}
-            onPress={() => playPlaylist(pl)}>
-            <View style={[styles.plIcon, { backgroundColor: colors.muted }]}>
-              {pl.tracks[0]?.cover ? (
-                <Image source={{ uri: pl.tracks[0].cover }} style={styles.plCover} />
-              ) : (
-                <Feather name="music" size={18} color={colors.mutedForeground} />
-              )}
-            </View>
-            <View style={styles.plInfo}>
-              <Text style={[styles.plName, { color: colors.foreground }]} numberOfLines={1}>{pl.name}</Text>
-              <Text style={[styles.plCount, { color: colors.mutedForeground }]}>{pl.tracks.length} songs</Text>
-            </View>
-            <Pressable onPress={() => playPlaylist(pl)} hitSlop={8} style={styles.plPlay}>
-              <Feather name="play" size={16} color={accent} />
-            </Pressable>
-            <Pressable
-              onPress={() => Alert.alert("Delete", `Delete "${pl.name}"?`, [
-                { text: "Cancel", style: "cancel" },
-                { text: "Delete", style: "destructive", onPress: () => deletePlaylist(pl.id) },
-              ])}
-              hitSlop={8}
+        {/* Tabs */}
+        <View style={styles.tabRow}>
+          {TABS.map((t, i) => (
+            <TouchableOpacity
+              key={t}
+              onPress={() => setActiveTab(i)}
+              style={[styles.tab, activeTab === i && { backgroundColor: accentColor }]}
             >
-              <Feather name="trash-2" size={16} color={colors.mutedForeground} />
-            </Pressable>
-          </Pressable>
-        ))
-      )}
-    </ScrollView>
+              <Text style={[styles.tabText, activeTab === i && { color: '#000', fontWeight: '700' }]}>
+                {t}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Playlists */}
+        {activeTab === 0 && (
+          <>
+            {PLAYLISTS.map((pl) => (
+              <View key={pl.id} style={styles.playlistCard}>
+                <View style={[styles.playlistArt, { backgroundColor: pl.color }]}>
+                  <Ionicons name="musical-notes" size={28} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.playlistName}>{pl.name}</Text>
+                  <Text style={styles.playlistCount}>{pl.count} songs</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => downloadPlaylist(pl.id)}
+                  style={[
+                    styles.dlBtn,
+                    downloadingPlaylist === pl.id && { borderColor: accentColor },
+                  ]}
+                >
+                  <Ionicons
+                    name={downloadingPlaylist === pl.id ? 'arrow-down' : 'arrow-down-circle-outline'}
+                    size={22}
+                    color={downloadingPlaylist === pl.id ? accentColor : '#8E8E93'}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.playBtn}>
+                  <Ionicons name="play-circle" size={40} color={accentColor} />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </>
+        )}
+
+        {/* Downloads */}
+        {activeTab === 1 && (
+          <>
+            {downloadingAny && (
+              <View style={[styles.infoBox, { borderColor: accentColor + '44' }]}>
+                <Ionicons name="arrow-down-circle" size={18} color={accentColor} />
+                <Text style={[styles.infoText, { color: accentColor }]}>
+                  {Object.keys(downloadProgress).length} song{Object.keys(downloadProgress).length > 1 ? 's' : ''} downloading…
+                </Text>
+              </View>
+            )}
+
+            {/* In-progress downloads */}
+            {Object.keys(downloadProgress).map((id) => {
+              const song = SONGS.find((s) => s.id === id);
+              if (!song) return null;
+              const pct = Math.round(downloadProgress[id] ?? 0);
+              return (
+                <View key={id} style={styles.songRow}>
+                  <View style={[styles.albumArt, { backgroundColor: song.color }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.songTitle}>{song.title}</Text>
+                    <Text style={styles.songArtist}>{song.artist}</Text>
+                    <View style={styles.progressTrack}>
+                      <View style={[styles.progressFill, { width: `${pct}%` as any, backgroundColor: accentColor }]} />
+                    </View>
+                  </View>
+                  <Text style={[styles.pctText, { color: accentColor }]}>{pct}%</Text>
+                </View>
+              );
+            })}
+
+            {downloadedList.length === 0 && !downloadingAny && (
+              <View style={styles.empty}>
+                <Ionicons name="arrow-down-circle-outline" size={52} color="#38383A" />
+                <Text style={styles.emptyTitle}>No Downloads Yet</Text>
+                <Text style={styles.emptyText}>Download songs from Home or Search to listen offline</Text>
+              </View>
+            )}
+
+            {downloadedList.map((song) => (
+              <TouchableOpacity key={song.id} style={styles.songRow} onPress={() => setCurrentSong(song)}>
+                <View style={[styles.albumArt, { backgroundColor: song.color }]}>
+                  <Ionicons name="checkmark" size={18} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.songTitle}>{song.title}</Text>
+                  <Text style={styles.songArtist}>{song.artist}</Text>
+                </View>
+                <Ionicons name="play-circle-outline" size={26} color={accentColor} />
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
+
+        {/* Liked */}
+        {activeTab === 2 && (
+          <>
+            {likedList.length === 0 && (
+              <View style={styles.empty}>
+                <Ionicons name="heart-outline" size={52} color="#38383A" />
+                <Text style={styles.emptyTitle}>No Liked Songs</Text>
+                <Text style={styles.emptyText}>Heart songs from Home to see them here</Text>
+              </View>
+            )}
+            {likedList.map((song) => (
+              <TouchableOpacity key={song.id} style={styles.songRow} onPress={() => setCurrentSong(song)}>
+                <View style={[styles.albumArt, { backgroundColor: song.color }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.songTitle}>{song.title}</Text>
+                  <Text style={styles.songArtist}>{song.artist}</Text>
+                </View>
+                <Ionicons name="heart" size={20} color={accentColor} />
+                <DownloadButton song={song} />
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, backgroundColor: '#000' },
   content: { paddingHorizontal: 20 },
-  title: { fontSize: 34, fontWeight: "800", letterSpacing: -1, marginBottom: 24 },
-  section: { fontSize: 11, fontWeight: "700", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12 },
-  sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 24, marginBottom: 12 },
-  addBtn: { width: 32, height: 32, borderRadius: 16, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
-  likedCard: { flexDirection: "row", alignItems: "center", gap: 14, padding: 14, borderRadius: 18, borderWidth: 1.5, marginBottom: 20 },
-  likedIcon: { width: 52, height: 52, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  likedInfo: { flex: 1 },
-  likedTitle: { fontSize: 16, fontWeight: "700" },
-  likedCount: { fontSize: 12, marginTop: 2 },
-  createRow: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 14, padding: 12, marginBottom: 14 },
-  createInput: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  createOk: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10 },
-  createOkText: { color: "#000", fontWeight: "700", fontSize: 13 },
-  empty: { alignItems: "center", paddingVertical: 32, gap: 10 },
-  emptyText: { fontSize: 15 },
-  playlistRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11, borderBottomWidth: 1 },
-  plIcon: { width: 50, height: 50, borderRadius: 12, overflow: "hidden", alignItems: "center", justifyContent: "center" },
-  plCover: { width: "100%", height: "100%" },
-  plInfo: { flex: 1 },
-  plName: { fontSize: 15, fontWeight: "600" },
-  plCount: { fontSize: 12, marginTop: 2 },
-  plPlay: { padding: 4 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  title: { color: '#fff', fontSize: 32, fontWeight: '800' },
+  addBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  tabRow: { flexDirection: 'row', gap: 8, marginBottom: 24 },
+  tab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#1C1C1E',
+  },
+  tabText: { color: '#fff', fontSize: 13, fontWeight: '500' },
+  playlistCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1C1C1E',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    gap: 12,
+  },
+  playlistArt: { width: 56, height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  playlistName: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  playlistCount: { color: '#8E8E93', fontSize: 13, marginTop: 2 },
+  dlBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#38383A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playBtn: {},
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1C1C1E',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    gap: 8,
+  },
+  infoText: { fontSize: 14, fontWeight: '500' },
+  empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
+  emptyTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  emptyText: { color: '#8E8E93', fontSize: 14, textAlign: 'center', paddingHorizontal: 40 },
+  songRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 12,
+    marginBottom: 8,
+    gap: 12,
+  },
+  albumArt: { width: 52, height: 52, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  songTitle: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  songArtist: { color: '#8E8E93', fontSize: 13, marginTop: 2 },
+  progressTrack: { height: 3, backgroundColor: '#38383A', borderRadius: 2, marginTop: 6, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 2 },
+  pctText: { fontSize: 12, fontWeight: '700', marginLeft: 4 },
 });

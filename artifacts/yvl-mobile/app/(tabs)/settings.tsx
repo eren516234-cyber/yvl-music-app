@@ -1,183 +1,246 @@
-import { Feather } from "@expo/vector-icons";
-import React, { useEffect } from "react";
+import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
 import {
-  Pressable,
+  Animated,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Switch,
   Text,
+  TouchableOpacity,
   View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ACCENT_COLORS, useTheme } from '@/contexts/ThemeContext';
 
-import { usePlayer } from "@/contexts/PlayerContext";
-import { useTheme, PRESET_ACCENTS } from "@/contexts/ThemeContext";
-
-const QUALITIES = ["320kbps", "160kbps", "96kbps"] as const;
+const AUDIO_QUALITIES = ['Normal', 'High', 'Very High', 'Lossless'];
 
 export default function SettingsScreen() {
-  const { accent, colors, setRoute, paint, rainbow, perScreen, baseAccent,
-    setPaint, setRainbow, setPerScreen, setBaseAccent } = useTheme();
-  const { quality, setQuality } = usePlayer();
+  const {
+    rainbowEnabled, setRainbowEnabled,
+    selectedColor, setSelectedColor,
+    accentColor, rainbowAnim,
+    perScreenColor, setPerScreenColor,
+  } = useTheme();
   const insets = useSafeAreaInsets();
+  const [audioQuality, setAudioQuality] = React.useState(1);
+  const [crossfade, setCrossfade] = React.useState(true);
+  const [normalizeVolume, setNormalizeVolume] = React.useState(false);
 
-  useEffect(() => { setRoute("settings"); }, [setRoute]);
-
-  const bg = colors.background;
-  const fg = colors.foreground;
-  const card = colors.card;
-  const muted = colors.mutedForeground;
-  const border = colors.border;
+  const animBg = rainbowEnabled
+    ? rainbowAnim.interpolate({
+        inputRange: [0, 1, 2, 3, 4, 5],
+        outputRange: ['#BF5AF2', '#0A84FF', '#30D158', '#FF9F0A', '#FF375F', '#BF5AF2'],
+      })
+    : accentColor;
 
   return (
-    <ScrollView
-      style={[styles.root, { backgroundColor: bg }]}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: 160 }]}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text style={[styles.title, { color: fg }]}>Settings</Text>
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" />
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: 180 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.title}>Settings</Text>
 
-      {/* ── Appearance ── */}
-      <Text style={[styles.section, { color: accent }]}>Appearance</Text>
+        {/* THEME */}
+        <Text style={styles.sectionLabel}>THEME</Text>
 
-      {/* Color picker */}
-      <View style={[styles.card, { backgroundColor: card, borderColor: border }]}>
-        <Text style={[styles.cardTitle, { color: fg }]}>Accent Color</Text>
-        <View style={styles.colorRow}>
-          {PRESET_ACCENTS.map((hex) => (
-            <Pressable
-              key={hex}
-              onPress={() => { setBaseAccent(hex); setPerScreen(false); setRainbow(false); }}
-              style={[styles.colorDot, {
-                backgroundColor: hex,
-                borderWidth: baseAccent === hex && !perScreen && !rainbow ? 3 : 0,
-                borderColor: fg,
-              }]}
-            />
-          ))}
-        </View>
-      </View>
-
-      {/* Toggles */}
-      <View style={[styles.card, { backgroundColor: card, borderColor: border }]}>
-        <SettingRow
-          label="Per-screen Colors"
-          desc="Each tab gets its own color"
-          value={perScreen && !rainbow}
-          onToggle={(v) => { setPerScreen(v); if (v) setRainbow(false); }}
-          accent={accent} fg={fg} muted={muted}
-        />
-        <View style={[styles.divider, { backgroundColor: border }]} />
-        <SettingRow
-          label="Paint Mode"
-          desc="Background becomes the accent color"
-          value={paint}
-          onToggle={setPaint}
-          accent={accent} fg={fg} muted={muted}
-        />
-        <View style={[styles.divider, { backgroundColor: border }]} />
-        <SettingRow
-          label="🌈 Rainbow Mode"
-          desc="Cycles through all colors automatically"
-          value={rainbow}
-          onToggle={(v) => { setRainbow(v); if (v) setPerScreen(false); setPaint(false); }}
-          accent={accent} fg={fg} muted={muted}
-        />
-      </View>
-
-      {/* ── Streaming quality ── */}
-      <Text style={[styles.section, { color: accent }]}>Audio Quality</Text>
-      <View style={[styles.card, { backgroundColor: card, borderColor: border }]}>
-        <Text style={[styles.cardTitle, { color: fg }]}>Streaming Quality</Text>
-        <Text style={[styles.cardDesc, { color: muted }]}>Higher quality uses more data.</Text>
-        <View style={styles.qualityRow}>
-          {QUALITIES.map((q) => (
-            <Pressable
-              key={q}
-              onPress={() => setQuality(q)}
-              style={[styles.qualityChip, {
-                borderColor: quality === q ? accent : border,
-                backgroundColor: quality === q ? accent : "transparent",
-              }]}
-            >
-              <Text style={[styles.qualityText, { color: quality === q ? "#000" : fg }]}>{q}</Text>
-            </Pressable>
-          ))}
-        </View>
-      </View>
-
-      {/* ── About ── */}
-      <Text style={[styles.section, { color: accent }]}>About</Text>
-      <View style={[styles.card, { backgroundColor: card, borderColor: border }]}>
-        {[
-          { icon: "music", label: "Music source", value: "JioSaavn" },
-          { icon: "mic", label: "Lyrics source", value: "LRCLib" },
-          { icon: "globe", label: "API", value: "saavn.dev" },
-          { icon: "shield", label: "Version", value: "1.0.0" },
-        ].map((row, i) => (
-          <React.Fragment key={row.icon}>
-            {i > 0 && <View style={[styles.divider, { backgroundColor: border }]} />}
-            <View style={styles.aboutRow}>
-              <Feather name={row.icon as any} size={15} color={accent} style={{ marginRight: 12 }} />
-              <Text style={[styles.aboutLabel, { color: `${fg}99` }]}>{row.label}</Text>
-              <Text style={[styles.aboutValue, { color: muted }]}>{row.value}</Text>
+        {/* Rainbow mode */}
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <Animated.View style={[styles.iconWrap, { backgroundColor: (animBg as any) }]}>
+              <Text style={styles.emoji}>🌈</Text>
+            </Animated.View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowTitle}>Rainbow Mode</Text>
+              <Text style={styles.rowSub}>Colour cycles through the spectrum</Text>
             </View>
-          </React.Fragment>
-        ))}
-      </View>
+            <Switch
+              value={rainbowEnabled}
+              onValueChange={setRainbowEnabled}
+              trackColor={{ false: '#38383A', true: accentColor }}
+              thumbColor="#fff"
+            />
+          </View>
+        </View>
 
-      {/* Brand */}
-      <View style={styles.brand}>
-        <Text style={[styles.brandLogo, { color: accent }]}>YVL</Text>
-        <Text style={[styles.brandSub, { color: muted }]}>Music streaming · JioSaavn · LRCLib</Text>
-      </View>
-    </ScrollView>
-  );
-}
+        {/* Custom Colour */}
+        <View style={[styles.card, { marginTop: 8 }]}>
+          <View style={styles.row}>
+            <View style={[styles.iconWrap, { backgroundColor: '#2C2C2E' }]}>
+              <Text style={styles.emoji}>✏️</Text>
+            </View>
+            <Text style={styles.rowTitle}>Custom Colour</Text>
+          </View>
+          <View style={styles.colorGrid}>
+            {ACCENT_COLORS.map((c) => (
+              <TouchableOpacity
+                key={c}
+                onPress={() => { setSelectedColor(c); if (rainbowEnabled) setRainbowEnabled(false); }}
+                style={[
+                  styles.colorDot,
+                  { backgroundColor: c },
+                  selectedColor === c && !rainbowEnabled && styles.colorDotActive,
+                ]}
+              >
+                {selectedColor === c && !rainbowEnabled && (
+                  <Ionicons name="checkmark" size={16} color="#fff" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
 
-function SettingRow({ label, desc, value, onToggle, accent, fg, muted }: {
-  label: string; desc: string; value: boolean;
-  onToggle: (v: boolean) => void;
-  accent: string; fg: string; muted: string;
-}) {
-  return (
-    <View style={styles.settingRow}>
-      <View style={{ flex: 1, marginRight: 12 }}>
-        <Text style={[styles.settingLabel, { color: fg }]}>{label}</Text>
-        <Text style={[styles.settingDesc, { color: muted }]}>{desc}</Text>
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onToggle}
-        trackColor={{ false: "rgba(255,255,255,0.12)", true: accent }}
-        thumbColor={value ? "#fff" : "#999"}
-        ios_backgroundColor="rgba(255,255,255,0.12)"
-      />
+        {/* Per-screen colour */}
+        <View style={[styles.card, { marginTop: 8 }]}>
+          <View style={styles.row}>
+            <View style={[styles.iconWrap, { backgroundColor: '#2C2C2E' }]}>
+              <Text style={styles.emoji}>🎨</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowTitle}>Per-Screen Colour</Text>
+              <Text style={styles.rowSub}>Each screen has its own accent</Text>
+            </View>
+            <Switch
+              value={perScreenColor}
+              onValueChange={setPerScreenColor}
+              trackColor={{ false: '#38383A', true: accentColor }}
+              thumbColor="#fff"
+            />
+          </View>
+        </View>
+
+        {/* Reset */}
+        <TouchableOpacity
+          style={styles.resetBtn}
+          onPress={() => { setRainbowEnabled(false); setSelectedColor('#BF5AF2'); setPerScreenColor(false); }}
+        >
+          <Text style={styles.resetText}>Reset to Default</Text>
+        </TouchableOpacity>
+
+        {/* PLAYBACK */}
+        <Text style={[styles.sectionLabel, { marginTop: 28 }]}>PLAYBACK</Text>
+
+        <View style={styles.card}>
+          <Text style={styles.rowTitle}>Audio Quality</Text>
+          <Text style={styles.rowSub}>Streamed from JioSaavn (Melo API)</Text>
+          <View style={styles.qualityRow}>
+            {AUDIO_QUALITIES.map((q, i) => (
+              <TouchableOpacity
+                key={q}
+                onPress={() => setAudioQuality(i)}
+                style={[
+                  styles.qualityBtn,
+                  audioQuality === i && { backgroundColor: accentColor, borderColor: accentColor },
+                ]}
+              >
+                <Text style={[styles.qualityText, audioQuality === i && { color: '#fff', fontWeight: '700' }]}>
+                  {q}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={[styles.card, { marginTop: 8 }]}>
+          <View style={styles.row}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowTitle}>Crossfade</Text>
+              <Text style={styles.rowSub}>Smooth transitions between songs</Text>
+            </View>
+            <Switch
+              value={crossfade}
+              onValueChange={setCrossfade}
+              trackColor={{ false: '#38383A', true: accentColor }}
+              thumbColor="#fff"
+            />
+          </View>
+          <View style={[styles.row, { marginTop: 12 }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowTitle}>Normalize Volume</Text>
+              <Text style={styles.rowSub}>Consistent volume across songs</Text>
+            </View>
+            <Switch
+              value={normalizeVolume}
+              onValueChange={setNormalizeVolume}
+              trackColor={{ false: '#38383A', true: accentColor }}
+              thumbColor="#fff"
+            />
+          </View>
+        </View>
+
+        {/* ACCOUNT */}
+        <Text style={[styles.sectionLabel, { marginTop: 28 }]}>ACCOUNT</Text>
+        <View style={styles.card}>
+          {[
+            { icon: 'person-outline', label: 'Profile', sub: 'eren516234' },
+            { icon: 'shield-checkmark-outline', label: 'Privacy', sub: 'Manage your data' },
+            { icon: 'notifications-outline', label: 'Notifications', sub: 'Manage alerts' },
+          ].map((item) => (
+            <TouchableOpacity key={item.label} style={[styles.row, { marginBottom: 12 }]}>
+              <Ionicons name={item.icon as any} size={22} color={accentColor} style={{ marginRight: 12 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>{item.label}</Text>
+                <Text style={styles.rowSub}>{item.sub}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#636366" />
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={styles.version}>YVL Music v1.0.0 · Powered by Melo API</Text>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, backgroundColor: '#000' },
   content: { paddingHorizontal: 20 },
-  title: { fontSize: 34, fontWeight: "800", letterSpacing: -1, marginBottom: 24 },
-  section: { fontSize: 11, fontWeight: "700", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 10, marginTop: 8 },
-  card: { borderRadius: 18, borderWidth: 1, overflow: "hidden", marginBottom: 20, padding: 16 },
-  cardTitle: { fontSize: 15, fontWeight: "700", marginBottom: 4 },
-  cardDesc: { fontSize: 12, marginBottom: 14 },
-  colorRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 10 },
-  colorDot: { width: 36, height: 36, borderRadius: 18 },
-  divider: { height: 1, marginVertical: 4 },
-  settingRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10 },
-  settingLabel: { fontSize: 15, fontWeight: "600" },
-  settingDesc: { fontSize: 12, marginTop: 2 },
-  qualityRow: { flexDirection: "row", gap: 10, marginTop: 10 },
-  qualityChip: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5 },
-  qualityText: { fontSize: 13, fontWeight: "600" },
-  aboutRow: { flexDirection: "row", alignItems: "center", paddingVertical: 11 },
-  aboutLabel: { flex: 1, fontSize: 14 },
-  aboutValue: { fontSize: 14 },
-  brand: { alignItems: "center", paddingVertical: 24 },
-  brandLogo: { fontSize: 60, fontWeight: "900", letterSpacing: -3 },
-  brandSub: { fontSize: 12, marginTop: 6 },
+  title: { color: '#fff', fontSize: 32, fontWeight: '800', marginBottom: 24 },
+  sectionLabel: { color: '#636366', fontSize: 11, fontWeight: '700', letterSpacing: 1.5, marginBottom: 8 },
+  card: { backgroundColor: '#1C1C1E', borderRadius: 14, padding: 16 },
+  row: { flexDirection: 'row', alignItems: 'center' },
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  emoji: { fontSize: 18 },
+  rowTitle: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  rowSub: { color: '#8E8E93', fontSize: 12, marginTop: 2 },
+  colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 14 },
+  colorDot: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorDotActive: { borderColor: '#fff', borderWidth: 2.5 },
+  resetBtn: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  resetText: { color: '#8E8E93', fontSize: 15, fontWeight: '600' },
+  qualityRow: { flexDirection: 'row', gap: 8, marginTop: 14, flexWrap: 'wrap' },
+  qualityBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#2C2C2E',
+    borderWidth: 1,
+    borderColor: '#38383A',
+  },
+  qualityText: { color: '#8E8E93', fontSize: 13 },
+  version: { color: '#636366', fontSize: 12, textAlign: 'center', marginTop: 32 },
 });
